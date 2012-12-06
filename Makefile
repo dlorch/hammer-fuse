@@ -1,4 +1,5 @@
-# -DTESTING for binary
+# hammerread.c
+# -DTESTING for helper functions
 #
 # Linux:
 # -D_BSD_SOURCE for DT_FIFO, DT_CHR .. in <dirent.h>
@@ -8,8 +9,10 @@
 # OSX:
 # -D_DARWIN_C_SOURCE for DT_FIFO, DT_CHR .. in <sys/dirent.h>
 # -D__DARWIN_64_BIT_INO_T for large ino_t in <sys/dirent.h>
+# -lfuse_ino64 to link against fuse library with large ino_t
 
 CFLAGS=-Wall -std=c99 -DTESTING
+LDFLAGS=-lfuse_ino64
 
 UNAME := $(shell uname)
 
@@ -18,7 +21,7 @@ ifeq ($(UNAME), Linux)
 endif
 
 ifeq ($(UNAME), Darwin)
-	CFLAGS += -D_DARWIN_C_SOURCE -D__DARWIN_64_BIT_INO_T
+	CFLAGS += -D_FILE_OFFSET_BITS=64 -D_DARWIN_C_SOURCE -D__DARWIN_64_BIT_INO_T -I/usr/local/include/fuse
 endif
 
-hammerread: hammerread.c
+fusehammer: hammerread.c fusehammer.c

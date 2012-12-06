@@ -66,6 +66,7 @@
 #include <string.h>
 #include <errno.h>
 #include <dirent.h>
+#include <time.h>
 #ifdef __APPLE__
 #include <sys/dirent.h>
 #endif
@@ -76,8 +77,10 @@
 #endif
 
 #include "hammer_disk.h"
+#include "hammerread.h"
 
 #ifndef BOOT2
+#if 0
 struct blockentry {
 	hammer_off_t	off;
 	int		use;
@@ -101,6 +104,7 @@ struct hfs {
 	int		lru;
 	struct blockentry cache[NUMCACHE];
 };
+#endif /* #if 0 */
 
 static void *
 hread(struct hfs *hfs, hammer_off_t off)
@@ -519,7 +523,7 @@ fail:
 }
 
 #ifndef BOOT2
-static int
+int
 hreaddir(struct hfs *hfs, ino_t ino, int64_t *off, struct dirent *de)
 {
 	struct hammer_base_elm key, end;
@@ -607,7 +611,7 @@ hresolve(struct hfs *hfs, ino_t dirino, const char *name)
 	return -1;
 }
 
-static ino_t
+ino_t
 hlookup(struct hfs *hfs, const char *path)
 {
 #if DEBUG > 2
@@ -643,7 +647,7 @@ hlookup(struct hfs *hfs, const char *path)
 
 
 #ifndef BOOT2
-static int
+int
 hstat(struct hfs *hfs, ino_t ino, struct stat* st)
 {
 	struct hammer_base_elm key;
@@ -674,11 +678,17 @@ hstat(struct hfs *hfs, ino_t ino, struct stat* st)
 	st->st_gid = hammer_to_unix_xid(&ed->inode.gid);
 	st->st_size = ed->inode.size;
 
+#ifdef __APPLE__
+	hammer_time_to_timespec(ed->inode.atime, &st->st_atimespec);
+	hammer_time_to_timespec(ed->inode.ctime, &st->st_ctimespec);
+	hammer_time_to_timespec(ed->inode.mtime, &st->st_mtimespec);
+#endif
+
 	return (0);
 }
 #endif
 
-static ssize_t
+ssize_t
 hreadf(struct hfs *hfs, ino_t ino, int64_t off, int64_t len, char *buf)
 {
 	int64_t startoff = off;
@@ -790,8 +800,88 @@ fsread(ino_t ino, void *buf, size_t len)
 }
 #endif
 
+int
+hreadlink(struct hfs *hfs, ino_t ino, char *buf, size_t size)
+{
+ 	struct hammer_base_elm key;
+	size_t namelen;
+	hammer_btree_leaf_elm_t e;
+	hammer_data_ondisk_t ed;
+	char tmp[32];
+	u_int32_t localization;
+
+#if DEBUG > 2
+	printf("%s(%llx)\n", __FUNCTION__, (long long)ino);
+#endif
+	// case 1: softlink name in inode
+	bzero(&key, sizeof(key));
+        key.obj_id = ino;
+        key.localization = HAMMER_LOCALIZE_INODE;
+        key.rec_type = HAMMER_RECTYPE_INODE;
+
+        e = hfind(hfs, &key, &key); 
+        if (e == NULL) {
 #ifndef BOOT2
-static int
+                errno = ENOENT;
+#endif
+                return -1;
+        }
+
+        ed = hread(hfs, e->data_offset);
+        if (ed == NULL)
+                return (-1);
+
+	if(ed->inode.size <= HAMMER_INODE_BASESYMLEN)
+	{
+	    	// expand special PFS softlinks
+	    	if(ed->inode.size == 10 &&
+		   strncmp(ed->inode.ext.symlink, "@@PFS", 5) == 0)
+		{
+		    	bcopy(ed->inode.ext.symlink + 5, tmp, 5);
+			tmp[5] = 0;
+			localization = strtoul(tmp, NULL, 10);
+
+			snprintf(buf, size,
+				 "@@0x%016llx:%05d",
+				 HAMMER_MAX_TID,
+				 localization);
+
+			return(0);
+		}
+
+		namelen = min(size, ed->inode.size);
+		memcpy(buf, ed->inode.ext.symlink, namelen);
+        	buf[namelen] = '\0';
+		return (0);
+	}
+
+	// case 2: softlink name in data block
+	key.obj_id = ino;
+	key.localization = HAMMER_LOCALIZE_MISC;
+	key.rec_type = HAMMER_RECTYPE_FIX;
+	key.key = HAMMER_FIXKEY_SYMLINK;
+
+	e = hfind(hfs, &key, &key);
+	if (e == NULL) {
+#ifndef BOOT2
+		errno = ENOENT;
+#endif
+		return -1;
+	}
+
+	ed = hread(hfs, e->data_offset);
+	if (ed == NULL)
+		return (-1);
+
+	namelen = min(size, e->data_len - HAMMER_SYMLINK_NAME_OFF);
+	memcpy(buf, ed->symlink.name, namelen);
+	buf[namelen] = '\0';
+
+	return (0);
+}
+
+#ifndef BOOT2
+int
 hinit(struct hfs *hfs)
 {
 #if DEBUG
@@ -813,6 +903,7 @@ hinit(struct hfs *hfs)
 	if (volhead == NULL)
 		return (-1);
 
+#if 0
 #ifdef TESTING
 	printf("signature: %svalid\n",
 	       volhead->vol_signature != HAMMER_FSBUF_VOLUME ?
@@ -820,6 +911,7 @@ hinit(struct hfs *hfs)
 			"");
 	printf("name: %s\n", volhead->vol_name);
 #endif
+#endif /* #if 0 */
 
 	if (volhead->vol_signature != HAMMER_FSBUF_VOLUME) {
 		for (int i = 0; i < NUMCACHE; i++)
@@ -834,7 +926,7 @@ hinit(struct hfs *hfs)
 	return (0);
 }
 
-static void
+void
 hclose(struct hfs *hfs)
 {
 #if DEBUG
@@ -987,6 +1079,7 @@ struct fs_ops hammer_fsops = {
 #endif	// LIBSTAND
 
 #ifdef TESTING
+#if 0
 int
 main(int argc, char **argv)
 {
@@ -1045,4 +1138,13 @@ main(int argc, char **argv)
 
 	return 0;
 }
+#endif /* #if 0 */
 #endif
+
+// from hammer_subs.c
+void
+hammer_time_to_timespec(u_int64_t xtime, struct timespec *ts)
+{
+    ts->tv_sec = (unsigned long)(xtime / 1000000);
+    ts->tv_nsec = (unsigned int)(xtime % 1000000) * 1000L;
+}
