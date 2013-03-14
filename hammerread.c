@@ -851,7 +851,7 @@ hreadlink(struct hfs *hfs, ino_t ino, char *buf, size_t size)
 
 		namelen = min(size, ed->inode.size);
 		memcpy(buf, ed->inode.ext.symlink, namelen);
-        	buf[namelen] = '\0';
+        	buf[namelen - 1] = '\0';
 		return (0);
 	}
 
@@ -875,7 +875,7 @@ hreadlink(struct hfs *hfs, ino_t ino, char *buf, size_t size)
 
 	namelen = min(size, e->data_len - HAMMER_SYMLINK_NAME_OFF);
 	memcpy(buf, ed->symlink.name, namelen);
-	buf[namelen] = '\0';
+	buf[namelen - 1] = '\0';
 
 	return (0);
 }
