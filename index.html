@@ -38,7 +38,37 @@
             
           <p>For now, HAMMER Filesystems will only be supported in read-only mode.</p>
                                      
-          <div id="logo"><img src="images/hammer-fuse.png" alt="When all you have is a HAMMER"/></div> 
+          <div id="logo"><img src="images/hammer-fuse.png" alt="When all you have is a HAMMER"/></div>          
+          
+          <h3>Hacking HAMMER-FUSE</h3>
+          
+          <p>Would you like to get started hacking HAMMER-FUSE? Follow these steps:</p>     
+          
+          <ol>
+            <li>Get FUSE for <a href="http://fuse.sourceforge.net/">Linux</a> or for
+              <a href="http://osxfuse.github.com/">OS X</a>.</li>      
+            <li>Download a raw dump of a sample disk image: <a href="http://dlorch.github.com/hammer-linux/files/hammerdisk.raw.bz2">hammerdisk.raw.bz2</a>
+              (<a href="http://dlorch.github.com/hammer-linux/files/hammerdisk.raw.txt">Contents</a>)</li> 
+            <li>Download and compile the code for HAMMER FUSE:
+<pre>$ git clone git@github.com:dlorch/hammer-fuse.git
+$ make</pre></li>    
+            <li>Mount the sample file system:
+<pre>$ mkdir /tmp/mnt                           # or any directory you want
+$ ./fusehammer hammerdisk.raw /tmp/mnt     # loopback mount
+$ ls -al /tmp/mnt                          # yay!</pre></li>
+            <li>Unmount the filesystem when you're done:
+<pre>$ umount /tmp/mnt</pre></li>
+          </ol>    
+          
+          <h3>Reading Material</h3>
+          
+          <p>Want to learn more about the awesome HAMMER Filesystem?</p>   
+          
+          <ul>
+            <li><a href="http://www.dragonflybsd.org/hammer/hammer.pdf">The HAMMER Filesystem by Matthew Dillon</a></li>
+            <li><a href="http://lists.dragonflybsd.org/pipermail/kernel/2008-July/012688.html">Matthew Dillon on [TUX3]: Comparison to Hammer fs design</a></li>
+              
+          </ul>
         </section>
 
         <footer>
