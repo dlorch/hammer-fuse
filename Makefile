@@ -21,7 +21,7 @@ ifeq ($(UNAME), Linux)
 endif
 
 ifeq ($(UNAME), Darwin)
-	CFLAGS += -D_FILE_OFFSET_BITS=64 -D_DARWIN_C_SOURCE -D__DARWIN_64_BIT_INO_T -I/usr/local/include/fuse
+	CFLAGS += -D_FILE_OFFSET_BITS=64 -D_DARWIN_C_SOURCE -D__DARWIN_64_BIT_INO_T -I/usr/local/include/osxfuse
 endif
 
 fusehammer: hammerread.c fusehammer.c
